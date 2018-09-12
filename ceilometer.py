@@ -9,6 +9,9 @@ import csv
 import struct
 
 import numpy as np
+import crc16
+
+from CRC_CS135 import CRC_CS135
 
 class Ceilometer:
     '''
@@ -18,20 +21,38 @@ class Ceilometer:
 
     def __init__(self, input_file, metadatafile = None, outfile = None):
         for infile in input_file:
-            with open(infile, 'rt') as fid:
+            with open(infile, 'rb') as fid:
                 for line in fid:
-                    if chr(1) in line:
-                        timestamp, ident = line.split(',')
-                        line2 = fid.next()
-                        status_warning, window_transmission, h1, h2, h3, h4, flags = line2.split(" ")
+                    if b'\x01' in line:
+                        timestamp, ident = line.decode('ascii').split(',')
+                        line2 = next(fid)
+                        status_warning, window_transmission, h1, h2, h3, h4, flags = line2.decode('ascii').split(" ")
                         status = status_warning[0]
                         warning_alarm = status_warning[1]
-                        scale, resolution, length, energy, laser_temp, total_tilt, bl, pulse, sample_rate, backscatter_sum = fid.next().split(" ")
-                        backscatter_profile = fid.next()
-                        checksum = fid.next().strip()
+                        line3 = next(fid)
+                        scale, resolution, length, energy, laser_temp, total_tilt, bl, pulse, sample_rate, backscatter_sum = line3.decode('ascii').split(" ")
+                        backscatter_profile = next(fid)
+                        checksum = next(fid)
+                        #ident include SOH character which is not included in
+                        #CS135's CRC
+                        self.checkmessage(bytes(ident[1:],'ascii')+line2+line3+backscatter_profile+b'\x03', checksum[1:])
+
+
                         #print(scale, resolution, length, energy, laser_temp, total_tilt, bl, pulse, sample_rate, backscatter_sum, checksum)
                         backscatter = (self.backscatter_to_array(backscatter_profile.strip()))
-                        print(np.where(backscatter < 0))
+
+    def checkmessage(self, message, checksum=None):
+        """
+        computes a checksum for the data, and optionally checks it against 
+        the supplied value.
+
+        Args:
+            message (string): Complete string including terminal ETX
+            checksum (string or int): checksum as supplied by instrument
+        """
+        crc = CRC_CS135()
+        print(hex(crc.crc_message(message)), int(checksum,16))
+
 
     def backscatter_to_array(self, backscatter_profile):
         """
