@@ -5,6 +5,16 @@ output/
 
 # Temporary file directory
 tmp/nanoc/
+__pycache__
+
+#temporary files
+*.swp
 
 # Crash Log
 crash.log
+
+# generated files
+a.out
+
+#Python virtualenv
+venv
