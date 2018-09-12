@@ -23,22 +23,36 @@ class Ceilometer:
             with open(infile, 'rb') as fid:
                 for line in fid:
                     if b'\x01' in line:
-                        timestamp, ident = line.decode('ascii').split(',')
-                        line2 = next(fid)
-                        status_warning, window_transmission, h1, h2, h3, h4, flags = line2.decode('ascii').split(" ")
-                        status = status_warning[0]
-                        warning_alarm = status_warning[1]
-                        line3 = next(fid)
-                        scale, resolution, length, energy, laser_temp, total_tilt, bl, pulse, sample_rate, backscatter_sum = line3.decode('ascii').split(" ")
-                        backscatter_profile = next(fid)
-                        checksum = next(fid)
-                        #ident include SOH character which is not included in
-                        #CS135's CRC
-                        self.checkmessage(bytes(ident[1:],'ascii')+line2+line3+backscatter_profile+b'\x03', checksum[1:])
+                        self.import_record(line, fid)
 
+    def import_record(self, line, fid):
+        timestamp, ident = line.decode('ascii').split(',')
+        line2 = next(fid)
+        status_warning, window_transmission, h1, h2, h3, h4, flags = line2.decode('ascii').split(" ")
+        status = status_warning[0]
+        warning_alarm = status_warning[1]
+        line3 = next(fid)
+        scale, resolution, length, energy, laser_temp, total_tilt, bl, pulse, sample_rate, backscatter_sum = line3.decode('ascii').split(" ")
+        backscatter_profile = next(fid)
+        checksum = next(fid)
+        #ident include SOH character which is not included in
+        #CS135's CRC
+        nextrecord = None
+        if len(checksum) != 6: #6 includes TX and LF
+            #probably merged with next record, e.g. ^C86de2018-09-10T11:40:58.503741.....
+            nextrecord = checksum[5:]
+            checksum = checksum[0:5]
 
-                        #print(scale, resolution, length, energy, laser_temp, total_tilt, bl, pulse, sample_rate, backscatter_sum, checksum)
-                        backscatter = (self.backscatter_to_array(backscatter_profile.strip()))
+                        
+        if self.checkmessage(bytes(ident[1:],'ascii')+line2+line3+backscatter_profile+b'\x03', int(checksum[1:],16)):
+            print(timestamp, 'Passed checksum')
+
+            #print(scale, resolution, length, energy, laser_temp, total_tilt, bl, pulse, sample_rate, backscatter_sum, checksum)
+            backscatter = (self.backscatter_to_array(backscatter_profile.strip()))
+        if(nextrecord):
+            #if the checksum was demerged from a merged record
+            self.import_record(nextrecord, fid)
+            print('corrected merged records')
 
     def checkmessage(self, message, checksum=None):
         """
@@ -47,10 +61,24 @@ class Ceilometer:
 
         Args:
             message (string): Complete string including terminal ETX
-            checksum (string or int): checksum as supplied by instrument
+            checksum (hex string or int): checksum as supplied by instrument
         """
         crc = CRC_CS135()
-        print(hex(crc.crc_message(message)), int(checksum,16))
+        crcval = crc.crc_message(message)
+        if checksum:
+            if isinstance(checksum, int):
+                pass
+            else:
+                #assume hex string, eg "ea4d"
+                checksum = int(checksum,16)
+
+            if crcval == checksum:
+                return True
+            else:
+                return False
+        else:
+            #no checksum supplied, return calculated value
+            return crcval
 
 
     def backscatter_to_array(self, backscatter_profile):
