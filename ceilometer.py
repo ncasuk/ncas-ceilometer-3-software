@@ -9,7 +9,6 @@ import csv
 import struct
 
 import numpy as np
-import crc16
 
 from CRC_CS135 import CRC_CS135
 
