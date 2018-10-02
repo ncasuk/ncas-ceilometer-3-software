@@ -15,8 +15,10 @@ from CRC_CS135 import CRC_CS135
 class Ceilometer:
     '''
     Takes logged output from a ceilometer then converts it to netCDF
-
     '''
+    time_series = []
+    backscatter_profile = []
+    distance_from_instrument = []
 
     def __init__(self, input_file, metadatafile = None, outfile = None):
         for infile in input_file:
@@ -26,15 +28,21 @@ class Ceilometer:
                         self.import_record(line, fid)
 
     def import_record(self, line, fid):
+        '''
+        Processes a single record from the ceilometer. if two records are merged
+        together (i.e. checksum of one runs straight into the timestamp for the
+        next, demerge them and recurse
+        '''
         timestamp, ident = line.decode('ascii').split(',')
         line2 = next(fid)
         status_warning, window_transmission, h1, h2, h3, h4, flags = line2.decode('ascii').split(" ")
         status = status_warning[0]
         warning_alarm = status_warning[1]
         line3 = next(fid)
-        scale, resolution, length, energy, laser_temp, total_tilt, bl, pulse, sample_rate, backscatter_sum = line3.decode('ascii').split(" ")
+        attenuated_scale, resolution, length, energy, laser_temp, total_tilt, bl, pulse, sample_rate, backscatter_sum = line3.decode('ascii').split(" ")
         backscatter_profile = next(fid)
         checksum = next(fid)
+        print(int(attenuated_scale))
         #ident include SOH character which is not included in
         #CS135's CRC
         nextrecord = None
@@ -42,13 +50,12 @@ class Ceilometer:
             #probably merged with next record, e.g. ^C86de2018-09-10T11:40:58.503741.....
             nextrecord = checksum[5:]
             checksum = checksum[0:5]
-
                         
         if self.checkmessage(bytes(ident[1:],'ascii')+line2+line3+backscatter_profile+b'\x03', int(checksum[1:],16)):
-            print(timestamp, 'Passed checksum')
 
             #print(scale, resolution, length, energy, laser_temp, total_tilt, bl, pulse, sample_rate, backscatter_sum, checksum)
-            backscatter = (self.backscatter_to_array(backscatter_profile.strip()))
+            backscatter = (self.backscatter_to_array(backscatter_profile.strip(), int(attenuated_scale)))
+            print(backscatter)
         if(nextrecord):
             #if the checksum was demerged from a merged record
             self.import_record(nextrecord, fid)
@@ -81,7 +88,7 @@ class Ceilometer:
             return crcval
 
 
-    def backscatter_to_array(self, backscatter_profile):
+    def backscatter_to_array(self, backscatter_profile, attenuated_scale=100):
         """
         Converts a string/bytes of 2048×5 hex (20-bit) characters to a 
         numpy array of signed integers.
@@ -91,11 +98,14 @@ class Ceilometer:
             backscatter_profile (string/bytes): String as read from ceilometer
             output.
 
+        Returns:
+            numpy array of backscatter values in sr¯¹m¯¹, scaled by 
+            attenuated_SCALE value
         """
         hex_string_array = np.array([backscatter_profile[i:i+5] for i in range(0, len(backscatter_profile), 5)])
         int_array = np.apply_along_axis(lambda y: [int(i,16) for i in y],0, hex_string_array)
         #is two's complement 2-bit integer
-        return(np.where(int_array > (2**19-1), int_array - 2**20, int_array))
+        return((np.where(int_array > (2**19-1), int_array - 2**20, int_array)) * (attenuated_scale/100.0) * 10**-8)
                         
 
 
