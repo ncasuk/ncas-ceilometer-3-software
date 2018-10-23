@@ -9,6 +9,10 @@ import csv
 import struct
 
 import numpy as np
+import pandas as pd
+
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 from CRC_CS135 import CRC_CS135
 
@@ -26,40 +30,67 @@ class Ceilometer:
                 for line in fid:
                     if b'\x01' in line:
                         self.import_record(line, fid)
+                    elif line.decode('ascii').split(' ')[1][0:2] == 'CS':
+                        self.import_record(line, fid, text=True)
+        self.df = pd.DataFrame(self.backscatter_profile, index=pd.to_datetime(self.time_series, infer_datetime_format=True), columns=self.distance_from_instrument)
+        ax = sns.heatmap(self.df.T, cmap='Greens')
+        ax.invert_yaxis()
+        plt.show()
 
-    def import_record(self, line, fid):
+
+    def import_record(self, line, fid, text=False):
         '''
         Processes a single record from the ceilometer. if two records are merged
         together (i.e. checksum of one runs straight into the timestamp for the
         next, demerge them and recurse
         '''
-        timestamp, ident = line.decode('ascii').split(',')
-        line2 = next(fid)
-        status_warning, window_transmission, h1, h2, h3, h4, flags = line2.decode('ascii').split(" ")
-        status = status_warning[0]
-        warning_alarm = status_warning[1]
-        line3 = next(fid)
-        attenuated_scale, resolution, length, energy, laser_temp, total_tilt, bl, pulse, sample_rate, backscatter_sum = line3.decode('ascii').split(" ")
-        backscatter_profile = next(fid)
-        checksum = next(fid)
-        print(int(attenuated_scale))
-        #ident include SOH character which is not included in
-        #CS135's CRC
-        nextrecord = None
-        if len(checksum) != 6: #6 includes TX and LF
-            #probably merged with next record, e.g. ^C86de2018-09-10T11:40:58.503741.....
-            nextrecord = checksum[5:]
-            checksum = checksum[0:5]
-                        
-        if self.checkmessage(bytes(ident[1:],'ascii')+line2+line3+backscatter_profile+b'\x03', int(checksum[1:],16)):
-
-            #print(scale, resolution, length, energy, laser_temp, total_tilt, bl, pulse, sample_rate, backscatter_sum, checksum)
-            backscatter = (self.backscatter_to_array(backscatter_profile.strip(), int(attenuated_scale)))
-            print(backscatter)
-        if(nextrecord):
-            #if the checksum was demerged from a merged record
-            self.import_record(nextrecord, fid)
-            print('corrected merged records')
+        try: #need to manually check for StopIteration in case 
+             #of truncated records
+            if(text):
+                #".txt" file, control characters stripped
+                timestamp, ident = line.decode('ascii').split(' ')
+                line2 = next(fid)[27:] #strip timestamp
+                line3 = next(fid)[27:]
+                backscatter_profile = next(fid)[27:]
+                checksum = next(fid)[27:]
+            else:
+                #".csv" file, with control characters
+                timestamp, ident = line.decode('ascii').split(',')
+                line2 = next(fid)
+                line3 = next(fid)
+                backscatter_profile = next(fid)
+                checksum = next(fid)
+            status_warning, window_transmission, h1, h2, h3, h4, flags = line2.decode('ascii').split(" ")
+            status = status_warning[0]
+            warning_alarm = status_warning[1]
+            attenuated_scale, resolution, length, energy, laser_temp, total_tilt, bl, pulse, sample_rate, backscatter_sum = line3.decode('ascii').split(" ")
+            #ident include SOH character which is not included in
+            #CS135's CRC
+            ident = ident.lstrip('\x01')
+            nextrecord = None
+            if len(checksum) != 6 and len(checksum) != 5: #6 includes TX and LF
+                #probably merged with next record, e.g. ^C86de2018-09-10T11:40:58.503741.....
+                nextrecord = checksum[5:]
+                checksum = checksum[0:5]
+    
+            #strip TX and LF
+            checksum = checksum.decode('ascii').lstrip('\x03').rstrip('\n')
+                            
+            if self.checkmessage(bytes(ident,'ascii').strip(b'\x02\r\n')+b'\x02\r\n'+line2.strip()+b'\r\n'+line3.strip()+b'\r\n'+backscatter_profile.strip()+b'\r\n'+b'\x03', int(checksum,16)):
+    
+                #print(scale, resolution, length, energy, laser_temp, total_tilt, bl, pulse, sample_rate, backscatter_sum, checksum)
+                backscatter = self.backscatter_to_array(backscatter_profile.strip(), int(attenuated_scale))
+                ranges = int(resolution.strip('0')) * np.arange(0, int(length))
+                self.backscatter_profile.append(backscatter)
+                self.time_series.append(timestamp)
+                self.distance_from_instrument = ranges
+            if(nextrecord):
+                #if the checksum was demerged from a merged record
+                self.import_record(nextrecord, fid, text=text)
+                print('corrected merged records')
+        except StopIteration:
+            #chuck away partial records
+            pass;
 
     def checkmessage(self, message, checksum=None):
         """
@@ -72,6 +103,7 @@ class Ceilometer:
         """
         crc = CRC_CS135()
         crcval = crc.crc_message(message)
+        print(crcval,checksum)
         if checksum:
             if isinstance(checksum, int):
                 pass
