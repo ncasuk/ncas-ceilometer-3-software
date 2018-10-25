@@ -6,19 +6,23 @@ Class to decode Campbell Scientific CS135 ceilometer data
 '''
 
 import csv
-import struct
+import subprocess
 
 import numpy as np
 import pandas as pd
 
-import matplotlib.pyplot as plt
-import seaborn as sns
+from netCDF4 import Dataset
+from datetime import datetime, timedelta
 
 from CRC_CS135 import CRC_CS135
 
 class Ceilometer:
     '''
     Takes logged output from a ceilometer then converts it to netCDF
+
+    test plot:
+
+    `cis plot attenuated_aerosol_backscatter_coefficient:test-ceil.nc:itemstyle="o",itemwidth="1",product=NetCDF_Gridded --type scatter2d --xaxis time --yaxis altitude --logv --cmap Greens --ymin 0 --ymax 4000`
     '''
     time_series = []
     backscatter_profile = []
@@ -32,9 +36,73 @@ class Ceilometer:
                         self.import_record(line, fid)
                     elif line.decode('ascii').split(' ')[1][0:2] == 'CS':
                         self.import_record(line, fid, text=True)
+
         self.df = pd.DataFrame(self.backscatter_profile, index=pd.to_datetime(self.time_series, infer_datetime_format=True), columns=self.distance_from_instrument)
-        ax = sns.heatmap(self.df.T, cmap='Greens')
+        self.netcdf(outfile)
+
+    def netcdf(self, output_file):
+        '''
+        Takes DataFrame with ceilometer backscatter data and outputs a well-formed NetCDF
+        well-formed NetCDF
+        '''
+
+        #instantiate NetCDF output
+        dataset = Dataset(output_file, "w", format="NETCDF4_CLASSIC")
+
+        # Create the time dimension - with unlimited length
+        time_dim = dataset.createDimension("time", None)
+
+        # Create the time variable
+        base_time = np.datetime64('1970-01-01T00:00:00')
+        self.timeoffsets = (self.df.index - base_time).total_seconds().get_values()
+
+        time_units = "seconds since " + base_time.astype(datetime).strftime('%Y-%m-%d %H:%M:%S')
+        time_var = dataset.createVariable("time", np.float64, ("time",))
+        time_var.units = time_units
+        time_var.fill_value = np.nan
+        time_var.standard_name = "time"
+        time_var.calendar = "standard"
+        time_var[:] = self.timeoffsets[:]
+        
+
+        #Create the altitude dimension
+        altitude_dim = dataset.createDimension("altitude", len(self.df.columns))
+
+        altitude_var = dataset.createVariable("altitude", np.float32, ("altitude",))
+        altitude_var.units = 'm'
+        altitude_var.standard_name = 'altitude'
+        altitude_var.long_name = 'Geometric height above geoid (WGS84)'
+        altitude_var.axis = 'Z'
+        altitude_var[:] = self.df.columns.get_values().astype(float)
+
+        dataset.processing_software_url = subprocess.check_output(["git", "remote", "-v"]).split()[1] # get the git repository URL
+        dataset.processing_software_version = subprocess.check_output(['git','rev-parse', '--short', 'HEAD']).strip() #record the Git revision
+        dataset.time_coverage_start = self.df.index[0].strftime('%Y-%m-%dT%H:%M:%S')
+        dataset.time_coverage_end = self.df.index[-1].strftime('%Y-%m-%dT%H:%M:%S')
+
+        backscatter = dataset.createVariable('attenuated_aerosol_backscatter_coefficient', 'float32', ('time','altitude'))
+        backscatter.units = 'm-1 sr-1'
+        backscatter.standard_name = 'attenuated_aerosol_backscatter_coefficient'
+        backscatter.long_name = 'Attenuated Aerosol Backscatter Coefficient'
+        backscatter.fill_value = -1.00e20
+        backscatter[:] = self.df
+
+        dataset.setncattr('Conventions',"CF-1.6, NCAS-AMF-1.0")
+
+        dataset.close()
+
+    def plot(self):
+        import matplotlib.pyplot as plt
+        import matplotlib.dates as md
+        import seaborn as sns
+
+        '''Does a quick-and-dirty plot for testing purposes'''
+        plt.xticks(rotation=45)
+        ax = sns.heatmap(np.log10(self.df.loc[:,0:4000].T), cmap='Greens', vmin=-6.5, vmax=-3)
+
         ax.invert_yaxis()
+
+        plt.autoscale()
         plt.show()
 
 
@@ -75,7 +143,9 @@ class Ceilometer:
     
             #strip TX and LF
             checksum = checksum.decode('ascii').lstrip('\x03').rstrip('\n')
-                            
+        
+            #strips and replaces control chrs, as they are missing in
+            # .txt format input files
             if self.checkmessage(bytes(ident,'ascii').strip(b'\x02\r\n')+b'\x02\r\n'+line2.strip()+b'\r\n'+line3.strip()+b'\r\n'+backscatter_profile.strip()+b'\r\n'+b'\x03', int(checksum,16)):
     
                 #print(scale, resolution, length, energy, laser_temp, total_tilt, bl, pulse, sample_rate, backscatter_sum, checksum)
@@ -103,7 +173,6 @@ class Ceilometer:
         """
         crc = CRC_CS135()
         crcval = crc.crc_message(message)
-        print(crcval,checksum)
         if checksum:
             if isinstance(checksum, int):
                 pass
@@ -114,6 +183,7 @@ class Ceilometer:
             if crcval == checksum:
                 return True
             else:
+                print("failed checksum")
                 return False
         else:
             #no checksum supplied, return calculated value
@@ -155,4 +225,5 @@ def arguments():
 
 if __name__ == '__main__':
      args = arguments().parse_args()
-     Ceilometer(args.infiles, args.metadata, args.output_file)
+     c = Ceilometer(args.infiles, args.metadata, args.output_file)
+     #c.plot()
