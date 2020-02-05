@@ -6,17 +6,19 @@ Class to decode Campbell Scientific CS135 ceilometer data
 '''
 
 import csv
+import os
 import subprocess
 
 import numpy as np
 import pandas as pd
-
-from netCDF4 import Dataset
 from datetime import datetime, timedelta
+
+from amfutils.instrument import AMFInstrument
+from netCDF4 import Dataset
 
 from CRC_CS135 import CRC_CS135
 
-class Ceilometer:
+class Ceilometer (AMFInstrument):
     '''
     Takes logged output from a ceilometer then converts it to netCDF
 
@@ -24,12 +26,19 @@ class Ceilometer:
 
     `cis plot attenuated_aerosol_backscatter_coefficient:test-ceil.nc:itemstyle="o",itemwidth="1",product=NetCDF_Gridded --type scatter2d --xaxis time --yaxis altitude --logv --cmap Greens --ymin 0 --ymax 4000`
     '''
+
+    progname = __file__
+    product = 'aerosol-backscatter'
+
     time_series = []
     backscatter_profile = []
     distance_from_instrument = []
 
-    def __init__(self, input_file, metadatafile = None, outfile = None):
-        for infile in input_file:
+    def get_data(self, input_files, outdir):
+
+        self.outdir = outdir
+
+        for infile in input_files:
             with open(infile, 'rb') as fid:
                 for line in fid:
                     if b'\x01' in line:
@@ -37,59 +46,46 @@ class Ceilometer:
                     elif line.decode('ascii').split(' ')[1][0:2] == 'CS':
                         self.import_record(line, fid, text=True)
 
-        self.df = pd.DataFrame(self.backscatter_profile, index=pd.to_datetime(self.time_series, infer_datetime_format=True), columns=self.distance_from_instrument)
-        self.netcdf(outfile)
+        self.rawdata = pd.DataFrame(self.backscatter_profile, index=pd.to_datetime(self.time_series, infer_datetime_format=True), columns=self.distance_from_instrument)
+        #set start and end times
+        self.time_coverage_start = self.rawdata.index[0].strftime(self.timeformat)
+        self.time_coverage_end = self.rawdata.index[-1].strftime(self.timeformat)
+        self.netcdf(self.outdir)
 
-    def netcdf(self, output_file):
+    def netcdf(self, output_dir):
         '''
-        Takes DataFrame with ceilometer backscatter data and outputs a well-formed NetCDF
-        well-formed NetCDF
+        Takes DataFrame with ceilometer backscatter data and outputs a 
+        well-formed NetCDF file. 
+
+        :param output_dir: string containing path to output directory
         '''
 
         #instantiate NetCDF output
-        dataset = Dataset(output_file, "w", format="NETCDF4_CLASSIC")
+        self.setup_dataset(self.product, 1)
 
-        # Create the time dimension - with unlimited length
-        time_dim = dataset.createDimension("time", None)
-
-        # Create the time variable
-        base_time = np.datetime64('1970-01-01T00:00:00')
-        self.timeoffsets = (self.df.index - base_time).total_seconds().get_values()
-
-        time_units = "seconds since " + base_time.astype(datetime).strftime('%Y-%m-%d %H:%M:%S')
-        time_var = dataset.createVariable("time", np.float64, ("time",))
-        time_var.units = time_units
-        time_var.fill_value = np.nan
-        time_var.standard_name = "time"
-        time_var.calendar = "standard"
-        time_var[:] = self.timeoffsets[:]
-        
+        #can drop timeoffsets
+        self.rawdata.drop(columns='timeoffsets', inplace=True)
 
         #Create the altitude dimension
-        altitude_dim = dataset.createDimension("altitude", len(self.df.columns))
+        altitude_dim = self.dataset.createDimension("altitude", len(self.rawdata.columns))
 
-        altitude_var = dataset.createVariable("altitude", np.float32, ("altitude",))
+        altitude_var = self.dataset.createVariable("altitude", np.float32, ("altitude",))
         altitude_var.units = 'm'
         altitude_var.standard_name = 'altitude'
         altitude_var.long_name = 'Geometric height above geoid (WGS84)'
         altitude_var.axis = 'Z'
-        altitude_var[:] = self.df.columns.get_values().astype(float)
+        altitude_var[:] = self.rawdata.columns.array.astype(float)
 
-        dataset.processing_software_url = subprocess.check_output(["git", "remote", "-v"]).split()[1] # get the git repository URL
-        dataset.processing_software_version = subprocess.check_output(['git','rev-parse', '--short', 'HEAD']).strip() #record the Git revision
-        dataset.time_coverage_start = self.df.index[0].strftime('%Y-%m-%dT%H:%M:%S')
-        dataset.time_coverage_end = self.df.index[-1].strftime('%Y-%m-%dT%H:%M:%S')
-
-        backscatter = dataset.createVariable('attenuated_aerosol_backscatter_coefficient', 'float32', ('time','altitude'))
+        backscatter = self.dataset.createVariable('attenuated_aerosol_backscatter_coefficient', 'float32', ('time','altitude'))
         backscatter.units = 'm-1 sr-1'
         backscatter.standard_name = 'attenuated_aerosol_backscatter_coefficient'
         backscatter.long_name = 'Attenuated Aerosol Backscatter Coefficient'
         backscatter.fill_value = -1.00e20
-        backscatter[:] = self.df
+        backscatter[:] = self.rawdata
 
-        dataset.setncattr('Conventions',"CF-1.6, NCAS-AMF-1.0")
+        self.dataset.setncattr('Conventions',"CF-1.6, NCAS-AMF-1.0")
 
-        dataset.close()
+        self.dataset.close()
 
     def plot(self):
         import matplotlib.pyplot as plt
@@ -98,7 +94,7 @@ class Ceilometer:
 
         '''Does a quick-and-dirty plot for testing purposes'''
         plt.xticks(rotation=45)
-        ax = sns.heatmap(np.log10(self.df.loc[:,0:4000].T), cmap='Greens', vmin=-6.5, vmax=-3)
+        ax = sns.heatmap(np.log10(self.rawdata.loc[:,0:4000].T), cmap='Greens', vmin=-6.5, vmax=-3)
 
         ax.invert_yaxis()
 
@@ -211,19 +207,15 @@ class Ceilometer:
                         
 
 
-def arguments():
-     """
-     Processes command-line arguments, returns parser.
-     """
-     from argparse import ArgumentParser
-     parser=ArgumentParser()
-     parser.add_argument('--outfile', dest="output_file", help="NetCDF output filename", default=None)
-     parser.add_argument('--metadata', dest="metadata", help="Metadata filename", default='meta-data.csv')
-     parser.add_argument('infiles',nargs='+', help="Ceilometer data file")
-
-     return parser
-
 if __name__ == '__main__':
-     args = arguments().parse_args()
-     c = Ceilometer(args.infiles, args.metadata, args.output_file)
-     #c.plot()
+    args = Ceilometer.arguments().parse_args()
+    c = Ceilometer(args.metadata)
+    try:
+        os.makedirs(args.outdir,mode=0o755)
+    except OSError:
+         #Dir already exists, probably
+         pass
+    else:
+        print ("Successfully create directory %s" % args.outdir)
+
+    c.get_data(args.infiles, args.outdir)
