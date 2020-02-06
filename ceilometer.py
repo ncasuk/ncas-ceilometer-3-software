@@ -63,7 +63,7 @@ class Ceilometer (AMFInstrument):
         #instantiate NetCDF output
         self.setup_dataset(self.product, 1)
 
-        #can drop timeoffsets
+        #can drop timeoffsets from rawdata
         self.rawdata.drop(columns='timeoffsets', inplace=True)
 
         #Create the altitude dimension
@@ -88,13 +88,14 @@ class Ceilometer (AMFInstrument):
         self.dataset.close()
 
     def plot(self):
+        '''Does a quick-and-dirty plot for testing purposes'''
+
         import matplotlib.pyplot as plt
         import matplotlib.dates as md
         import seaborn as sns
 
-        '''Does a quick-and-dirty plot for testing purposes'''
         plt.xticks(rotation=45)
-        ax = sns.heatmap(np.log10(self.rawdata.loc[:,0:4000].T), cmap='Greens', vmin=-6.5, vmax=-3)
+        ax = sns.heatmap(np.log10(self.rawdata.T), cmap='Greens', vmin=-6.5, vmax=-3)
 
         ax.invert_yaxis()
 
@@ -106,7 +107,11 @@ class Ceilometer (AMFInstrument):
         '''
         Processes a single record from the ceilometer. if two records are merged
         together (i.e. checksum of one runs straight into the timestamp for the
-        next, demerge them and recurse
+        next, demerge them and recurse.
+
+        :param: line: Bytes object. A line from a raw datafile.
+        :param: fid: File(-like) object such as returned by open()
+        :param: text: Boolean. Set to true if the raw file has had control characters stripped.
         '''
         try: #need to manually check for StopIteration in case 
              #of truncated records
