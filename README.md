@@ -1,5 +1,7 @@
 # ncas-ceilometer-3-software
 
+Campbell Scientific CS135 : https://www.campbellsci.com/cs135 
+
 Code for creating AMOF-compliant netCDF files for ncas-ceilometer-3 instrument.
 
 Uses [ncas_amof_netcdf_template] submodule to create an empty netCDF file.
