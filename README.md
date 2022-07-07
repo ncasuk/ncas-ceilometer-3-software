@@ -30,7 +30,6 @@ git submodule init
 git submodule update
 ```
 
-** TO DO **
 Install required modules using `pip install -r requirements.txt` or `conda install --file requirements.txt`
 
 
