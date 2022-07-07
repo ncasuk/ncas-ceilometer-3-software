@@ -1,0 +1,19 @@
+project, NCAS Long Term Measurement Programme
+project_principal_investigator, Professor Stephen Mobbs
+project_principal_investigator_email, stephen.mobbs@ncas.ac.uk
+project_principal_investigator_url, https://orcid.org/0000-0003-3872-9422
+platform_type, stationary_platform
+location_keywords, Iceland
+featureType, timeSeriesProfile
+product_version, v1.0
+processing_level, 1
+processing_software_url, https://github.com/ncasuk/ncas-ceilometer-3-software
+processing_software_version, v2.0
+laser_wavelength, 905 nm
+nominal_laser_pulse_energy, CHECK: 4.8e-06 J
+pulse_repetition_frequency, 10 kHz
+lens_diameter, CHANGE: lens diameter. String: min 3 characters
+beam_divergence, 0.35 mrad
+pulse_length, CHANGE: pulse length. String: min 3 characters
+sampling_frequency, CHANGE: sampling frequency. String: min 3 characters
+comment, None
