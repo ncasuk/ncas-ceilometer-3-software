@@ -50,12 +50,15 @@ def get_data(csv_file):
     
     
 def make_netcdf_aerosol_backscatter(csv_file, metadata_file = None, ncfile_location = '.', verbose = False):
+    if verbose: print('Making aerosol_backscatter netCDF file\nReading data')
     time_len, alt_len, dt_times, backscatter_array, laser_temp, laser_energy, window_transmittance, backscatter_sum, background_light, resolution, ranges, pulses, scale, total_tilt, altitude, cba = get_data(csv_file)
     unix_times, doy, years, months, days, hours, minutes, seconds, time_coverage_start_dt, time_coverage_end_dt, file_date = util.get_times(dt_times)
     
+    if verbose: print('Creating file')
     create_netcdf.main('ncas-ceilometer-3', date = file_date, dimension_lengths = {'time':time_len, 'altitude':alt_len}, loc = 'land', products = ['aerosol-backscatter'], file_location=ncfile_location)
     ncfile = Dataset(f'{ncfile_location}/ncas-ceilometer-3_iao_{file_date}_aerosol-backscatter_v1.0.nc', 'a')
     
+    if verbose: print('Adding data to variables')
     util.update_variable(ncfile, 'altitude', altitude)
     util.update_variable(ncfile, 'attenuated_aerosol_backscatter_coefficient', backscatter_array)
     util.update_variable(ncfile, 'laser_temperature', laser_temp)
@@ -76,6 +79,7 @@ def make_netcdf_aerosol_backscatter(csv_file, metadata_file = None, ncfile_locat
     util.update_variable(ncfile, 'day_of_year', doy)
     util.update_variable(ncfile, 'sensor_zenith_angle', total_tilt)
     
+    if verbose: print('Setting global attributes')
     ncfile.setncattr('time_coverage_start', dt.datetime.fromtimestamp(time_coverage_start_dt, dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S %Z"))
     ncfile.setncattr('time_coverage_end', dt.datetime.fromtimestamp(time_coverage_end_dt, dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S %Z"))
     
@@ -92,9 +96,10 @@ def make_netcdf_aerosol_backscatter(csv_file, metadata_file = None, ncfile_locat
     
     ncfile.close()
     
+    if verbose: print('Removing empty variables')
     remove_empty_variables.main(f'{ncfile_location}/ncas-ceilometer-3_iao_{file_date}_aerosol-backscatter_v1.0.nc', verbose = verbose)
 
-
+    if verbose: print('Complete')
 
 
 
@@ -108,12 +113,15 @@ def make_netcdf_aerosol_backscatter(csv_file, metadata_file = None, ncfile_locat
 
 
 def make_netcdf_cloud_base(csv_file, metadata_file = None, ncfile_location = '.', verbose = False):
+    if verbose: print('Making cloud_base netCDF file\nReading data')
     time_len, alt_len, dt_times, backscatter_array, laser_temp, laser_energy, window_transmittance, backscatter_sum, background_light, resolution, ranges, pulses, scale, total_tilt, altitude, cba = get_data(csv_file)
     unix_times, doy, years, months, days, hours, minutes, seconds, time_coverage_start_dt, time_coverage_end_dt, file_date = util.get_times(dt_times)
     
+    if verbose: print('Creating file')
     create_netcdf.main('ncas-ceilometer-3', date = file_date, dimension_lengths = {'time':time_len, 'layer_index': 4}, loc = 'land', products = ['cloud-base'], file_location=ncfile_location)
     ncfile = Dataset(f'{ncfile_location}/ncas-ceilometer-3_iao_{file_date}_cloud-base_v1.0.nc', 'a')
     
+    if verbose: print('Adding data to variables')
     util.update_variable(ncfile, 'cloud_base_altitude', cba)
     util.update_variable(ncfile, 'laser_temperature', laser_temp)
     util.update_variable(ncfile, 'laser_pulse_energy', laser_energy)
@@ -134,6 +142,7 @@ def make_netcdf_cloud_base(csv_file, metadata_file = None, ncfile_location = '.'
     util.update_variable(ncfile, 'day_of_year', doy)
     util.update_variable(ncfile, 'sensor_zenith_angle', total_tilt)
     
+    if verbose: print('Setting global attributes')
     ncfile.setncattr('time_coverage_start', dt.datetime.fromtimestamp(time_coverage_start_dt, dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S %Z"))
     ncfile.setncattr('time_coverage_end', dt.datetime.fromtimestamp(time_coverage_end_dt, dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S %Z"))
     
@@ -150,10 +159,12 @@ def make_netcdf_cloud_base(csv_file, metadata_file = None, ncfile_location = '.'
         
     ncfile.close()
     
+    if verbose: print('Removing empty variables')
     remove_empty_variables.main(f'{ncfile_location}/ncas-ceilometer-3_iao_{file_date}_cloud-base_v1.0.nc', verbose = verbose)
  
+    if verbose: print('Completed')
     
-    
+
     
 if __name__ == "__main__":
     import argparse
