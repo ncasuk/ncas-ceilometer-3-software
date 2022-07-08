@@ -49,8 +49,20 @@ A description of all the available options can be obtained using the `-h` flag, 
 python process_ceilometer.py -h
 ```
 
-** TO DO ** 
-Bash scripts
+### BASH scripts
+
+Three [scripts] are provided for easy use:
+* `make_netcdf.sh` - makes netCDF file for a given date: `./make_netcdf.sh YYYYmmdd`
+* `make_today_netcdf.sh` - makes netCDF file for today's data: `./make_today_netcdf.sh`
+* `make_yesterday_netcdf.sh` - makes netCDF file for yesterday's data: `./make_yesterday_netcdf.sh`
+
+Within `make_netcdf.sh`, the following may need adjusting:
+* `netcdf_path="/gws/..."`: replace file path with where to write netCDF files.
+* `datapath="/gws/..."`: replace file path with path to data.
+* `metadata_file="${SCRIPT_DIR}/../metadata.csv`: replace if using different metadata file.
+* `logfilepath=/home...`: replace with path of where to write logs
+
+[scripts]: scripts
 
 ## Further Information
 * `read_ceilometer.py` contains the code that actually reads the raw data. This is called from within `process_ceilometer.py`
