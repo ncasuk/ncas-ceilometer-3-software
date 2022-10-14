@@ -80,8 +80,8 @@ def make_netcdf_aerosol_backscatter(csv_file, metadata_file = None, ncfile_locat
     util.update_variable(ncfile, 'sensor_zenith_angle', total_tilt)
     
     if verbose: print('Setting global attributes')
-    ncfile.setncattr('time_coverage_start', dt.datetime.fromtimestamp(time_coverage_start_dt, dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S %Z"))
-    ncfile.setncattr('time_coverage_end', dt.datetime.fromtimestamp(time_coverage_end_dt, dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S %Z"))
+    ncfile.setncattr('time_coverage_start', dt.datetime.fromtimestamp(time_coverage_start_dt, dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S"))
+    ncfile.setncattr('time_coverage_end', dt.datetime.fromtimestamp(time_coverage_end_dt, dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S"))
     
     util.add_metadata_to_netcdf(ncfile, metadata_file)
                 
