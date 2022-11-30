@@ -6,9 +6,11 @@
 
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
-netcdf_path="/gws/nopw/j04/ncas_obs/iao/processing/ncas-ceilometer-3/netcdf_files"
-datapath="/gws/nopw/j04/ncas_obs/iao/raw_data/ncas-ceilometer-3/incoming"
-logfilepath="/home/users/earjham/logs/nc3logs"
+gws_path=/gws/pw/j07/ncas_obs_vol2
+
+netcdf_path=${gws_path}/iao/processing/ncas-ceilometer-3/netcdf_files
+datapath=${gws_path}/iao/raw_data/ncas-ceilometer-3/incoming
+logfilepath=${gws_path}/iao/logs/nc3logs
 metadata_file=${SCRIPT_DIR}/../metadata.csv
 
 
