@@ -4,7 +4,6 @@ Campbell Scientific CS135 : https://www.campbellsci.com/cs135
 
 Code for creating AMOF-compliant netCDF files for ncas-ceilometer-3 instrument.
 
-Uses [ncas_amof_netcdf_template] submodule to create an empty netCDF file.
 
 
 ## Requirements
@@ -15,22 +14,17 @@ Uses [ncas_amof_netcdf_template] submodule to create an empty netCDF file.
   * datetime
   * netCDF4
   * csv
+  * [ncas_amof_netcdf_template](https://ncas-amof-netcdf-template.readthedocs.io/en/latest/index.html)
 
 
 ## Installation
 
 Clone the git repo and submodule
 ```
-git clone --recurse-submodules https://github.com/ncasuk/ncas-ceilometer-3-software.git
+git clone https://github.com/ncasuk/ncas-ceilometer-3-software.git
 ```
 
-If the `--recurse-submodules` flag is not included, the `ncas_amof_netcdf_template` repo will not also be cloned. To fix this, use the following commands in the top level of this repo:
-```
-git submodule init
-git submodule update
-```
-
-Install required modules using `pip install -r requirements.txt` or `conda install --file requirements.txt`
+Install required modules using `conda install --file requirements.txt` or `pip install -r requirements.txt`
 
 
 ## Usage
@@ -71,4 +65,3 @@ Within `make_netcdf.sh`, the following may need adjusting:
 
 
 
-[ncas_amof_netcdf_template]: https://github.com/joshua-hampton/ncas_amof_netcdf_template
