@@ -15,6 +15,7 @@ Uses [ncas_amof_netcdf_template] submodule to create an empty netCDF file.
   * datetime
   * netCDF4
   * csv
+  * [ncas_amof_netcdf_template](https://ncas-amof-netcdf-template.readthedocs.io/en/latest/index.html)
 
 
 ## Installation
