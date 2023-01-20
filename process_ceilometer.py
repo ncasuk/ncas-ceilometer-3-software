@@ -17,7 +17,7 @@ def get_data(csv_file):
     
     backscatter_array = np.stack(all_the_info_df['backscatter_profile'].to_numpy())
     laser_temp = np.stack(all_the_info_df['laser_temp'].to_numpy())
-    laser_temp = np.array([float(i) for i in laser_temp])
+    laser_temp = np.array([float(i) for i in laser_temp]) + 273.15  # convert C to K
     laser_energy = np.stack(all_the_info_df['energy'].to_numpy())
     laser_energy = np.array([float(i) for i in laser_energy])
     window_transmittance = np.stack(all_the_info_df['window_transmission'].to_numpy())
