@@ -7,9 +7,9 @@ Code for creating AMOF-compliant netCDF files for ncas-ceilometer-3 instrument.
 
 
 ## Requirements
-* python 3.7 or above
+* python 3.7-3.11 
 * modules:
-  * numpy
+  * numpy<1.25
   * pandas
   * datetime
   * netCDF4

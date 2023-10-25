@@ -1,4 +1,4 @@
-numpy
+numpy<1.25
 netcdf4
 pandas
 ncas-amof-netcdf-template
