@@ -6,9 +6,9 @@ platform_type, stationary_platform
 location_keywords, Iceland
 featureType, timeSeriesProfile
 product_version, v1.0
-processing_level, 1
+processing_level, 1, type=int
 processing_software_url, https://github.com/ncasuk/ncas-ceilometer-3-software
-processing_software_version, v2.0
+processing_software_version, v2.1
 laser_wavelength, 905 nm
 nominal_laser_pulse_energy, CHECK: 4.8e-06 J
 pulse_repetition_frequency, 10 kHz

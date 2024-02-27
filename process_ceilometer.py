@@ -1,7 +1,5 @@
 import datetime as dt
 import numpy as np
-from netCDF4 import Dataset
-import csv
 
 import read_ceilometer
 from ncas_amof_netcdf_template import create_netcdf, util, remove_empty_variables
@@ -52,7 +50,7 @@ def get_data(csv_file):
     
     
     
-def make_netcdf_aerosol_backscatter(csv_file, metadata_file = None, ncfile_location = '.', verbose = False, local_tsv_file_loc = None):
+def make_netcdf_aerosol_backscatter(csv_file, metadata_file = None, ncfile_location = '.', platform = None, verbose = False, local_tsv_file_loc = None):
     if verbose: print('Making aerosol_backscatter netCDF file\nReading data')
     time_len, alt_len, dt_times, backscatter_array, laser_temp, laser_energy, window_transmittance, backscatter_sum, background_light, resolution, ranges, pulses, scale, total_tilt, altitude, cba = get_data(csv_file)
     unix_times, doy, years, months, days, hours, minutes, seconds, time_coverage_start_dt, time_coverage_end_dt, file_date = util.get_times(dt_times)
@@ -62,10 +60,10 @@ def make_netcdf_aerosol_backscatter(csv_file, metadata_file = None, ncfile_locat
         'ncas-ceilometer-3',
         date = file_date,
         dimension_lengths = {'time': time_len, 'altitude': alt_len},
+        platform = platform,
         loc = 'land',
         products = ['aerosol-backscatter'],
         file_location = ncfile_location,
-        return_open = True,
         use_local_files = local_tsv_file_loc,
     )
     
@@ -123,7 +121,7 @@ def make_netcdf_aerosol_backscatter(csv_file, metadata_file = None, ncfile_locat
 
 
 
-def make_netcdf_cloud_base(csv_file, metadata_file = None, ncfile_location = '.', verbose = False, local_tsv_file_loc = None):
+def make_netcdf_cloud_base(csv_file, metadata_file = None, ncfile_location = '.', platform = None, verbose = False, local_tsv_file_loc = None):
     if verbose: print('Making cloud_base netCDF file\nReading data')
     time_len, alt_len, dt_times, backscatter_array, laser_temp, laser_energy, window_transmittance, backscatter_sum, background_light, resolution, ranges, pulses, scale, total_tilt, altitude, cba = get_data(csv_file)
     unix_times, doy, years, months, days, hours, minutes, seconds, time_coverage_start_dt, time_coverage_end_dt, file_date = util.get_times(dt_times)
@@ -133,10 +131,10 @@ def make_netcdf_cloud_base(csv_file, metadata_file = None, ncfile_location = '.'
         'ncas-ceilometer-3',
         date = file_date,
         dimension_lengths = {'time': time_len, 'layer_index': 4},
+        platform = platform,
         loc = 'land',
         products = ['cloud-base'],
         file_location = ncfile_location,
-        return_open = True,
         use_local_files = local_tsv_file_loc,
     )
     
@@ -193,14 +191,15 @@ if __name__ == "__main__":
     parser.add_argument('-m','--metadata', type = str, help = 'csv file with global attributes and additional metadata. Default is None', dest='metadata')
     parser.add_argument('-o','--ncfile-location', type=str, help = 'Path for where to save netCDF file. Default is .', default = '.', dest="ncfile_location")
     parser.add_argument('-p','--products', nargs = '*', help = 'Products of ncas-ceilometer-3 to make netCDF files for. Options are aerosol_backscatter, cloud_base, cloud_coverage (not yet implemented). One or many can be given (space separated), default is "aerosol_backscatter cloud_base".', default = ['aerosol_backscatter', 'cloud_base'])
+    parser.add_argument('-f','--platform', type=str, help = 'CEDA platform where instrument made measurements, use to overwrite default option for instrument.', default = None, dest = "platform")
     parser.add_argument('-t','--tsv-location', type = str, help = "Path where local copy of AMF_CVs tsv files are, for 'offline' use. Default is None (for 'online' use).", default = None, dest = "tsv_location")
     args = parser.parse_args()
     
     for prod in args.products:
         if prod == 'aerosol_backscatter':
-            make_netcdf_aerosol_backscatter(args.input_csv, metadata_file = args.metadata, ncfile_location = args.ncfile_location, verbose = args.verbose, local_tsv_file_loc = args.tsv_location)
+            make_netcdf_aerosol_backscatter(args.input_csv, metadata_file = args.metadata, ncfile_location = args.ncfile_location, platform = args.platform, verbose = args.verbose, local_tsv_file_loc = args.tsv_location)
         elif prod == 'cloud_base':
-            make_netcdf_cloud_base(args.input_csv, metadata_file = args.metadata, ncfile_location = args.ncfile_location, verbose = args.verbose, local_tsv_file_loc = args.tsv_location)
+            make_netcdf_cloud_base(args.input_csv, metadata_file = args.metadata, ncfile_location = args.ncfile_location, platform = args.platform, verbose = args.verbose, local_tsv_file_loc = args.tsv_location)
         elif prod == 'cloud_coverage':
             #make_netcdf_cloud_coverage(args.input_csv, metadata_file = args.metadata, ncfile_location = args.ncfile_location)
             print('WARNING: cloud_coverage is not yet implemented, continuing with other prodcuts...')
