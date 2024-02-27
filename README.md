@@ -19,7 +19,7 @@ Code for creating AMOF-compliant netCDF files for ncas-ceilometer-3 instrument.
 
 ## Installation
 
-Clone the git repo and submodule
+Clone the git repo
 ```
 git clone https://github.com/ncasuk/ncas-ceilometer-3-software.git
 ```
@@ -61,7 +61,7 @@ Within `make_netcdf.sh`, the following may need adjusting:
 ## Further Information
 * `read_ceilometer.py` contains the code that actually reads the raw data. This is called from within `process_ceilometer.py`
 * No quality control is currently done on the raw data.
-* See [ncas_amof_netcdf_template] for more information on how the netCDF file is created, and the additional useful functions it contains.
+* See [ncas_amof_netcdf_template](https://ncas-amof-netcdf-template.readthedocs.io/en/latest/index.html) for more information on how the netCDF file is created, and the additional useful functions it contains.
 
 
 
