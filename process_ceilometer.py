@@ -2,7 +2,8 @@ import datetime as dt
 import numpy as np
 
 import read_ceilometer
-from ncas_amof_netcdf_template import create_netcdf, util, remove_empty_variables
+from ncas_amof_netcdf_template import create_netcdf, util, remove_empty_variables, values
+from packaging.version import Version
 
 
 
@@ -72,7 +73,11 @@ def make_netcdf_aerosol_backscatter(csv_file, metadata_file = None, ncfile_locat
     util.update_variable(ncfile, 'attenuated_aerosol_backscatter_coefficient', backscatter_array)
     util.update_variable(ncfile, 'laser_temperature', laser_temp)
     util.update_variable(ncfile, 'laser_pulse_energy', laser_energy)
-    util.update_variable(ncfile, 'window_transmittance', window_transmittance)
+    if(Version(values.get_latest_CVs_version()) <= Version("v2.0.0")):
+        # yes, there is a spelling mistake in the netCDF file
+        util.update_variable(ncfile, 'window_transmttance', window_transmittance)
+    else:
+        util.update_variable(ncfile, 'window_transmittance', window_transmittance)
     util.update_variable(ncfile, 'backscatter_sum', backscatter_sum)
     util.update_variable(ncfile, 'background_light', background_light)
     util.update_variable(ncfile, 'profile_pulses', pulses)
@@ -142,8 +147,11 @@ def make_netcdf_cloud_base(csv_file, metadata_file = None, ncfile_location = '.'
     util.update_variable(ncfile, 'cloud_base_altitude', cba)
     util.update_variable(ncfile, 'laser_temperature', laser_temp)
     util.update_variable(ncfile, 'laser_pulse_energy', laser_energy)
-    # yes, there is a spelling mistake in the netCDF file
-    util.update_variable(ncfile, 'window_transmittance', window_transmittance)  
+    if(Version(values.get_latest_CVs_version()) <= Version("v2.0.0")):
+        # yes, there is a spelling mistake in the netCDF file
+        util.update_variable(ncfile, 'window_transmttance', window_transmittance)
+    else:
+        util.update_variable(ncfile, 'window_transmittance', window_transmittance)
     util.update_variable(ncfile, 'backscatter_sum', backscatter_sum)
     util.update_variable(ncfile, 'background_light', background_light)
     util.update_variable(ncfile, 'profile_pulses', pulses)
